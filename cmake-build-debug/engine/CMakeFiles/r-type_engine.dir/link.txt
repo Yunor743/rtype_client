@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../lib/libr-type_engine.a CMakeFiles/r-type_engine.dir/source/StateMachine.cpp.o CMakeFiles/r-type_engine.dir/source/ComponentStorage.cpp.o CMakeFiles/r-type_engine.dir/source/Snitch.cpp.o CMakeFiles/r-type_engine.dir/source/Game.cpp.o CMakeFiles/r-type_engine.dir/source/states/DebugState.cpp.o CMakeFiles/r-type_engine.dir/source/components/Transform.cpp.o CMakeFiles/r-type_engine.dir/source/System.cpp.o CMakeFiles/r-type_engine.dir/source/SystemStorage.cpp.o
+/usr/bin/ranlib ../lib/libr-type_engine.a

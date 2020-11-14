@@ -1,0 +1,201 @@
+@startuml
+package "Modules" #DDDDDD {
+    interface IModule {
+        __ public __
+        +update()
+        +~IModule()
+    }
+
+    interface INetworkModule {
+        __ public __
+        +long initInstance(unsigned maxPlayers)
+        +optional<Instance> getInstance()
+        +~IServerModule()
+    }
+    IModule <|-- INetworkModule
+
+    class Instance {
+        __ private __
+        -long m_id
+        __ public __
+        +long getId()
+        +bool isFull()
+        +unsigned getClientsCount()
+        +close()
+    }
+    INetworkModule *-- Instance
+
+        interface IInputModule {
+        __ public __
+        +vector<Input> getInputEvents()
+        +array<float, 2> getCursorLocation()
+    }
+    IModule <|-- IInputModule
+
+    enum Input {
+    }
+    Input o-- IInputModule
+
+    interface IDisplayModule {
+        __ public __
+        +drawSprite(const string& name, Transform const& transform, unsigned id);
+        +Dimensional getCursorLocation();
+    }
+    IModule <|-- IDisplayModule
+
+    interface IAudioModule {
+        __ public __
+        +playSound(const string& name, float volume, float pitch);
+    }
+    IModule <|-- IAudioModule
+}
+
+package "Server" #DDDDDD {
+    class MsgQueue<T> {
+        __ public __
+        -const T& front()
+        -const T& back()
+        -bool empty()
+        -size_t size()
+        -void clear()
+        -T pop_front()
+        -T pop_back()
+        -void push_back(const T&)
+        -void push_front(const T&)
+        -void wait()
+    }
+    class MessageHeader<T> {
+        -uint8_t magic1
+        -uint8_t magic2
+        -T code
+        -uint32 size
+    }
+    class Message<T> {
+        __ public __
+        +void empty()
+        +size_t size()const
+        +bool validMagic(const uint8_t &m1, const uint8_t &m2)const
+        +bool validMagic(const std::pair<uint8_t, uint8_t> &p)const
+        +void insert<D>(D &data)
+        +void extract<D>(D &data)
+        __ private __
+        -std::shared_ptr<IClient<T>> remote = nullptr
+        -MessageHeader<T> head
+        -std::vector<std::byte> body
+    }
+    interface IClient<T> {
+        __ public __
+        +void disconnect()
+        +void send(const Message<T> &)
+        +bool isConnected()const
+        +std::string getRemoteIp()const
+        __ protected __
+        #void readHeader()
+        #void readBody()
+        #void writeHeader()
+        #void writeBody()
+        #addToMsgQueue()
+        __ public __
+        +void giveId(const uint32_t = 0)
+        +const uint32_t &getId()const
+        operator bool()
+    }
+    interface IServer<T> {
+        __ public __
+        +bool start()
+        +bool stop()
+        +void update(const size_t = -1, const bool = false)
+        __ protected __
+        #void onClientDisconnect(std::shared_ptr<IClient<T>>)
+        #void onClientConnect(std::shared_ptr<IClient<T>>)
+        #void waitForClientConnect()
+        #void msgClient(const Message<T> &, std::shared_ptr<IClient<T>>)
+        #void msgAll(const Message<T> &, std::shared_ptr<IClient<T>> = nullptr)
+        #void onMessage(Message<T>)
+    }   
+    IClient <|-- IServer
+    
+    interface TcpServer<T> {
+        __ public __
+        void update(const size_t = -1, const bool = false)
+        +void onMessage(Message<T>)
+        __ private __
+        -MsgQueue<Message<T>> q_in
+        -std::deque<std::shared_ptr<TcpClient<T>>> clients
+
+        -boost::asio::io_context asio_context
+        -std::thread context_thread;
+
+        -boost::asio::ip::tcp::acceptor asio_acceptor;
+        -uint32_t base_id = 10000
+    }
+    IServer <|-- TcpServer
+    TcpClient *-- TcpServer
+
+    class TcpClient<T> {
+        __ private __
+        -boost::asio::ip::tcp::socket socket
+        -boost::asio::io_context &io_context
+        -MsgQueue<Message<T>> &q_in
+        -MsgQueue<Message<T>> q_out
+        -Message<T> tmp
+    }
+    IClient <|-- TcpClient
+
+    interface UdpServer<T> {
+        __ public __
+        void update(const size_t = -1, const bool = false)
+        +void onMessage(Message<T>)
+
+        __ private __
+        -void readHeader()
+        -void readBody()
+        -addToMsgQueue()
+        __ private __
+        -MsgQueue<Message<T>> q_in
+        -std::unordered_map<std::shared_ptr<boost::asio::ip::udp::endpoint, std::shred_ptr<UdpClient<T>>> clients
+
+        -boost::asio::io_context asio_context
+        -std::thread context_thread;
+        
+        -Message<T> tmp
+        -std::shared_ptr<boost::asio::ip::udp::endpoint> tmp_end
+
+        -boost::asio::ip::udp::socket asio_acceptor;
+        -uint32_t base_id = 10000
+    }
+    IServer <|-- UdpServer
+    UdpClient *-- UdpServer
+
+    class UdpClient<T> {
+        __ private __
+        -boost::asio::ip::tcp::socket socket
+        -boost::asio::io_context &io_context
+        -MsgQueue<Message<T>> &q_in
+        -MsgQueue<Message<T>> q_out
+        -Message<T> tmp
+    }
+    IClient <|-- UdpClient
+
+    class Player {
+        bool ready = false
+        short nb_key = 0
+        std::array<Event, 5> imput
+        Dimensionnal cur_pos = {0, 0}
+    }
+    class GameServer {
+        __ private __
+        -std::unordered_map<std::shared_ptr<UdpClient>>, Player> list
+        -std::string path;
+    }
+    UdpServer <|-- GameServer
+    INetworkModule <|-- GameServer
+    IAudioModule <|-- GameServer
+    IInputModule <|-- GameServer
+    IDisplayModule <|-- GameServer
+
+    class AssetsServer {
+    }
+    TcpServer <|-- AssetsServer
+}
+@enduml

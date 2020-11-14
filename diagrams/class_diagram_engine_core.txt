@@ -1,0 +1,115 @@
+@startuml
+
+package "Game Engine" #DDDDDD {
+    class Game {
+        __ private __
+        -string m_name
+        -map<string, unique_ptr<IModule>> m_modules
+        -optional<reference_wrapper<IModule>> displayModule
+        -optional<reference_wrapper<IModule>> audioModule
+        -optional<reference_wrapper<IModule>> inputModule
+        -optional<reference_wrapper<IModule>> networkModule
+        __ public __
+        +StateMachine stateMachine
+        +ComponentStorage componentStorage
+        +SystemManager systemManager
+        __ public __
+        +Game(string name)
+        +addModule(string name, IModule module)
+        +optional<IModule> getModule(string name)
+        +useAsDisplayModule(string name)
+        +useAsInputModule(string name)
+        +useAsAudioModule(string name)
+        +useAsNetworkModule(string name)
+        +run()
+    }
+
+    interface IModule {
+        __ public __
+        +update()
+        +~IModule()
+    }
+    Game *-- IModule
+
+    class StateMachine {
+        __ private __
+        -stack<unique_ptr<AState>> m_statesStack
+        -&Game m_instance;
+        __ public __
+        +StateMachine(&Game)
+        +void setState(unique_ptr<AState> state)
+        +void stackState(unique_ptr<AState> state)
+        +optional<reference_wrapper<AState>> getCurrentState() const
+        +void leaveCurrentState()
+    }
+    Game o-- StateMachine
+
+    class ComponentStorage {
+        __ private __
+        -map<unsigned, bool> m_dead
+        -map<typeindex, any> m_storage
+        -StateMachine &m_stateMachine
+        -map<unsigned, short> m_parentStates
+        -unsigned m_entityCount
+        friend EntityBuilder
+        -EntityBuilder m_builder
+        __ public __
+        +ComponentStorage(StateMachine &statemachine)
+        +registerComponent<T>()
+        +map<unsigned, T> &getComponents<T>()
+        +map<unsigned, tuple<T&...>> joinComponents<T...>(map<unsigned, T...> &maps...)
+        +EntityBuilder buildEntity()
+        +destroyEntity(size_t id)
+        +~ComponentStorage()
+        __ private __
+        -unsigned getNextFreeId()
+        -void storeComponent<T>(T component, unsigned index)
+    }
+    Game o-- ComponentStorage
+
+    class EntityBuilder {
+        __ private __
+        -unsigned m_id
+        -unique_ptr<ComponentStorage> m_dest
+        __ public __
+        +EntityBuilder &withComponent<T>(T component)
+        +size_t build()
+        +size_t buildAsOrphan()
+    }
+    ComponentStorage *-- EntityBuilder
+
+    abstract AState {
+        __ private __
+        -short m_id
+        __ public __
+        +short getId()
+        +onStart()
+        +onPause()
+        +onResume()
+        +onTick()
+        +onStop()
+    }
+    StateMachine *-- AState
+
+    class SystemStorage {
+        __ private __
+        -vector<System> m_systems
+        __ public __
+        +addSystem(System system)
+        +runTick(ComponentStorage &components)
+    }
+    Game o-- SystemStorage
+
+    note left of SystemStorage : Multithreading could be great here
+
+    class System {
+        __ private __
+        -std::function<void(ComponentStorage &)> m_call_wrapper
+        __ public __
+        +System(auto system_function)
+        +void call(ComponentStorage &) const
+    }
+    SystemStorage *-- System
+}
+
+@enduml

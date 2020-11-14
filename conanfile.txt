@@ -1,0 +1,21 @@
+[requires]
+zlib/1.2.11@conan/stable
+bzip2/1.0.6@conan/stable
+boost/1.74.0
+sfml/2.5.1@bincrafters/stable
+openal/1.19.1 # let see https://github.com/conan-io/conan-center-index/pull/3167
+
+[options]
+sfml:graphics=True
+sfml:window=True
+sfml:audio=True
+sfml:network=True
+
+[generators]
+cmake
+
+# If we want the executable to work on windows too, we need to copy libs in binary directory
+[imports]
+bin, *.dll -> ./bin
+lib, *.dylib* -> ./bin
+lib, *.lib* -> ./bin    # Because Boost .lib are dynamically linked

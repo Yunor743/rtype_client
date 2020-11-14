@@ -1,0 +1,2 @@
+# Hashes of file build rules.
+f32625094c612a1ae33ddd4fce17a0bc client/CMakeFiles/assets
